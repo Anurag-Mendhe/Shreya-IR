@@ -1,0 +1,190 @@
+# Step 1: Import required libraries
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.cluster.hierarchy as shc
+from sklearn.decomposition import PCA
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import silhouette_score
+
+=========================================================================================
+
+# Step 2: Load the dataset
+X = pd.read_csv("/home/anurag/Codes_7th_Sem/IR/IRDataset/Assign5/CC_GENERAL.csv")
+print("Dataset Shape:", X.shape)
+print("\nFirst 5 Records:")
+print(X.head())
+
+=========================================================================================
+
+# Step 3: Remove customer ID
+X = X.drop(columns=["CUST_ID"], errors="ignore")
+
+=========================================================================================
+
+# Step 4: Convert data to numeric and handle missing values
+X = X.apply(pd.to_numeric, errors="coerce")
+X = X.replace([np.inf, -np.inf], np.nan)
+
+imputer = SimpleImputer(strategy="median")
+X = pd.DataFrame(
+	imputer.fit_transform(X),
+	columns=X.columns
+)
+print("\nMissing Values After Cleaning:",
+	X.isnull().sum().sum())
+
+=========================================================================================
+# Step 5: Standardize the data
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+=========================================================================================
+
+# Step 6: Normalize the standardized data
+
+X_normalized = normalize(X_scaled)
+
+=========================================================================================
+
+# Step 7: Apply PCA for dimensionality reduction
+
+pca = PCA(n_components=2, random_state=42)
+X_principal = pca.fit_transform(X_normalized)
+X_principal = pd.DataFrame(
+	X_principal,
+	columns=["P1", "P2"]
+)
+print("\nPCA Data:")
+print(X_principal.head())
+print("\nTotal Explained Variance Ratio:",
+round(pca.explained_variance_ratio_.sum(), 4))
+
+=========================================================================================
+
+# Step 8: Draw the dendrogram
+
+print("\nTotal Explained Variance Ratio:",
+pca.explained_variance_ratio_.sum())
+
+=========================================================================================
+
+# Step 5: Draw a dendrogram using a sample
+# A sample keeps the dendrogram computation manageable.
+
+# Use a sample to keep computation manageable
+sample_size = min(1000, len(X_principal))
+X_sample = X_principal.sample(
+	n=sample_size,
+	random_state=42
+)
+
+plt.figure(figsize=(12, 6))
+
+shc.dendrogram(
+	shc.linkage(X_sample, method="ward"),
+	no_labels=True
+)
+
+plt.title("Dendrogram for Agglomerative Clustering")
+plt.xlabel("Data Points")
+plt.ylabel("Euclidean Distance")
+plt.tight_layout()
+plt.show()
+
+=========================================================================================
+
+# Step 9: Prepare a consistent sample for clustering
+
+cluster_size = min(3000, len(X_principal))
+X_cluster = X_principal.sample(
+	n=cluster_size,
+	random_state=42
+).reset_index(drop=True)
+
+print("\nNumber of records used for clustering:",
+	len(X_cluster))
+
+=========================================================================================
+
+# Step 10: Apply Agglomerative Clustering for k = 2 to 6
+k_values = [2, 3, 4, 5, 6]
+silhouette_scores = []
+
+for k in k_values:
+	model = AgglomerativeClustering(
+		n_clusters=k,
+		linkage="ward"
+	)
+
+	labels = model.fit_predict(X_cluster)
+
+	# Calculate silhouette score
+	score = silhouette_score(X_cluster, labels)
+	silhouette_scores.append(score)
+
+	# Display cluster information
+	print(f"\nNumber of Clusters (k) = {k}")
+	
+	print("Cluster Sizes:")
+	print(
+		pd.Series(labels)
+		.value_counts()
+		.sort_index()
+	)
+	
+	print("Silhouette Score:", round(score, 4))
+	
+	# Visualize clusters
+	plt.figure(figsize=(7, 6))
+	
+	plt.scatter(
+		X_cluster["P1"],
+		X_cluster["P2"],
+		c=labels,
+		cmap="rainbow",
+		s=10
+	)
+	plt.title(
+		f"Agglomerative Clustering (k = {k})"
+	)
+	plt.xlabel("Principal Component 1")
+	plt.ylabel("Principal Component 2")
+	plt.tight_layout()
+	plt.show()
+
+=========================================================================================
+
+# Step 11: Compare silhouette scores
+
+plt.figure(figsize=(8, 5))
+
+plt.bar(k_values, silhouette_scores)
+
+plt.xlabel("Number of Clusters (k)")
+plt.ylabel("Silhouette Score")
+plt.title("Comparison of Silhouette Scores")
+plt.xticks(k_values)
+plt.tight_layout()
+plt.show()
+
+=========================================================================================
+
+# Step 12: Identify the best k using silhouette score
+
+best_index = np.argmax(silhouette_scores)
+best_k = k_values[best_index]
+best_score = silhouette_scores[best_index]
+
+print("\nSilhouette Score Comparison:")
+
+for k, score in zip(k_values, silhouette_scores):
+	print(f"k = {k}: {score:.4f}")
+
+print("\nBest Number of Clusters:", best_k)
+print("Best Silhouette Score:", round(best_score, 4))
+
