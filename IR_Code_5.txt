@@ -13,7 +13,7 @@ from sklearn.metrics import silhouette_score
 =========================================================================================
 
 # Step 2: Load the dataset
-X = pd.read_csv("/home/anurag/Codes_7th_Sem/IR/IRDataset/Assign5/CC_GENERAL.csv")
+X = pd.read_csv(r"C:\Users\Anurag\Desktop\CC_GENERAL.csv")
 print("Dataset Shape:", X.shape)
 print("\nFirst 5 Records:")
 print(X.head())
